@@ -1,36 +1,218 @@
-<!-- public/index.html -->
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Merge PDF Tool</title>
+  <title>PDF Tools</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
   <div class="container">
-    <h1>Merge PDF Tool</h1>
-    <form id="pdfForm">
-      <input type="file" name="pdfs" id="pdfs" multiple accept=".pdf" required />
-      <button type="submit">Merge PDFs</button>
-    </form>
-  </div>
-  <script>
-    const form = document.getElementById('pdfForm');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData();
-      const files = document.getElementById('pdfs').files;
-      for (let file of files) formData.append('pdfs', file);
+    <h1>PDF Tools</h1>
+    
+    <!-- Tool Selection -->
+    <div class="tools-container">
+      <button class="tool-btn active" data-tool="merge">
+        <i class="fas fa-object-group"></i> Merge PDFs
+      </button>
+      <button class="tool-btn" data-tool="split">
+        <i class="fas fa-cut"></i> Split PDF
+      </button>
+      <button class="tool-btn" data-tool="compress">
+        <i class="fas fa-compress"></i> Compress PDF
+      </button>
+      <button class="tool-btn" data-tool="watermark">
+        <i class="fas fa-stamp"></i> Add Watermark
+      </button>
+      <button class="tool-btn" data-tool="rotate">
+        <i class="fas fa-redo"></i> Rotate PDF
+      </button>
+    </div>
 
-      const res = await fetch('/merge', {
-        method: 'POST',
-        body: formData,
+    <!-- Tool Forms -->
+    <div class="tool-forms">
+      <!-- Merge PDFs Form -->
+      <form id="mergeForm" class="tool-form active">
+        <h2>Merge Multiple PDFs</h2>
+        <div class="drop-zone">
+          <span class="drop-zone__prompt">Drop PDFs here or click to upload</span>
+          <input type="file" name="pdfs" id="mergePdfs" multiple accept=".pdf" class="drop-zone__input" required />
+        </div>
+        <div id="mergeFileList" class="file-list"></div>
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-object-group"></i> Merge PDFs
+        </button>
+      </form>
+
+      <!-- Split PDF Form -->
+      <form id="splitForm" class="tool-form">
+        <h2>Split PDF into Pages</h2>
+        <div class="drop-zone">
+          <span class="drop-zone__prompt">Drop a PDF here or click to upload</span>
+          <input type="file" name="pdf" id="splitPdf" accept=".pdf" class="drop-zone__input" required />
+        </div>
+        <div id="splitFileList" class="file-list"></div>
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-cut"></i> Split PDF
+        </button>
+      </form>
+
+      <!-- Compress PDF Form -->
+      <form id="compressForm" class="tool-form">
+        <h2>Compress PDF</h2>
+        <div class="drop-zone">
+          <span class="drop-zone__prompt">Drop a PDF here or click to upload</span>
+          <input type="file" name="pdf" id="compressPdf" accept=".pdf" class="drop-zone__input" required />
+        </div>
+        <div id="compressFileList" class="file-list"></div>
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-compress"></i> Compress PDF
+        </button>
+      </form>
+
+      <!-- Watermark PDF Form -->
+      <form id="watermarkForm" class="tool-form">
+        <h2>Add Watermark to PDF</h2>
+        <div class="drop-zone">
+          <span class="drop-zone__prompt">Drop a PDF here or click to upload</span>
+          <input type="file" name="pdf" id="watermarkPdf" accept=".pdf" class="drop-zone__input" required />
+        </div>
+        <div id="watermarkFileList" class="file-list"></div>
+        <input type="text" name="watermarkText" placeholder="Enter watermark text" required />
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-stamp"></i> Add Watermark
+        </button>
+      </form>
+
+      <!-- Rotate PDF Form -->
+      <form id="rotateForm" class="tool-form">
+        <h2>Rotate PDF Pages</h2>
+        <div class="drop-zone">
+          <span class="drop-zone__prompt">Drop a PDF here or click to upload</span>
+          <input type="file" name="pdf" id="rotatePdf" accept=".pdf" class="drop-zone__input" required />
+        </div>
+        <div id="rotateFileList" class="file-list"></div>
+        <select name="degrees" required>
+          <option value="90">Rotate 90° Clockwise</option>
+          <option value="180">Rotate 180°</option>
+          <option value="270">Rotate 90° Counter-clockwise</option>
+        </select>
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-redo"></i> Rotate PDF
+        </button>
+      </form>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="loading-spinner hidden">
+      <div class="spinner"></div>
+      <p>Processing PDF...</p>
+    </div>
+  </div>
+
+  <script>
+    // Tool switching functionality
+    document.querySelectorAll('.tool-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        // Update active button
+        document.querySelector('.tool-btn.active').classList.remove('active');
+        button.classList.add('active');
+        
+        // Show corresponding form
+        document.querySelector('.tool-form.active').classList.remove('active');
+        document.getElementById(`${button.dataset.tool}Form`).classList.add('active');
       });
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'merged.pdf';
-      a.click();
+    });
+
+    // Drag and drop functionality
+    document.querySelectorAll('.drop-zone').forEach(dropZone => {
+      dropZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropZone.classList.add('drop-zone--over');
+      });
+
+      ['dragleave', 'dragend'].forEach(type => {
+        dropZone.addEventListener(type, () => {
+          dropZone.classList.remove('drop-zone--over');
+        });
+      });
+
+      dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('drop-zone--over');
+        
+        const input = dropZone.querySelector('input');
+        const files = e.dataTransfer.files;
+        
+        if (input.multiple) {
+          input.files = files;
+        } else {
+          input.files = files.length ? [files[0]] : null;
+        }
+        
+        updateFileList(input);
+      });
+    });
+
+    // File list update
+    function updateFileList(input) {
+      const fileList = document.getElementById(`${input.id}List`);
+      fileList.innerHTML = '';
+      
+      Array.from(input.files).forEach(file => {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.innerHTML = `
+          <i class="fas fa-file-pdf"></i>
+          <span>${file.name}</span>
+          <span class="file-size">(${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+        `;
+        fileList.appendChild(fileItem);
+      });
+    }
+
+    // Form submission handlers
+    const forms = {
+      mergeForm: '/merge',
+      splitForm: '/split',
+      compressForm: '/compress',
+      watermarkForm: '/watermark',
+      rotateForm: '/rotate'
+    };
+
+    Object.entries(forms).forEach(([formId, endpoint]) => {
+      const form = document.getElementById(formId);
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const spinner = document.getElementById('loadingSpinner');
+        
+        try {
+          spinner.classList.remove('hidden');
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `processed.pdf`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+        } catch (error) {
+          alert(`Error processing PDF: ${error.message}`);
+        } finally {
+          spinner.classList.add('hidden');
+        }
+      });
+    });
+
+    // File input change handlers
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+      input.addEventListener('change', () => updateFileList(input));
     });
   </script>
 </body>
