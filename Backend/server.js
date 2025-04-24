@@ -1,16 +1,20 @@
-const express = require('express');
-const fileUpload = require('express-fileupload');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+// backend/server.js
+import express from 'express';
+import fileUpload from 'express-fileupload';
+import cors from 'cors';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(fileUpload());
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(join(__dirname, '../public')));
 
 // Merge PDFs
 app.post('/merge', async (req, res) => {
@@ -143,17 +147,34 @@ app.post('/rotate', async (req, res) => {
   }
 });
 
-// Extract text from PDF
-app.post('/extract-text', async (req, res) => {
+// Get PDF Info
+app.post('/info', async (req, res) => {
   try {
     const file = req.files?.pdf;
     if (!file) return res.status(400).send('No file uploaded.');
 
-    // Note: pdf-lib doesn't support text extraction
-    // You would need to use a different library like pdf-parse or pdfjs-dist
-    res.status(501).send('Text extraction not implemented. Consider using pdf-parse library.');
+    const pdfDoc = await PDFDocument.load(file.data);
+    const pageCount = pdfDoc.getPageCount();
+    const firstPage = pdfDoc.getPages()[0];
+    const { width, height } = firstPage.getSize();
+
+    res.json({
+      pageCount,
+      pageSize: {
+        width: Math.round(width),
+        height: Math.round(height)
+      },
+      title: pdfDoc.getTitle() || 'Untitled',
+      author: pdfDoc.getAuthor() || 'Unknown',
+      subject: pdfDoc.getSubject() || '',
+      keywords: pdfDoc.getKeywords() || '',
+      creator: pdfDoc.getCreator() || '',
+      producer: pdfDoc.getProducer() || '',
+      creationDate: pdfDoc.getCreationDate(),
+      modificationDate: pdfDoc.getModificationDate()
+    });
   } catch (error) {
-    res.status(500).send(`Error extracting text: ${error.message}`);
+    res.status(500).send(`Error getting PDF info: ${error.message}`);
   }
 });
 
