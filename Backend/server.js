@@ -4,7 +4,7 @@ import fileUpload from 'express-fileupload';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, degrees as pdfDegrees } from 'pdf-lib';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,6 +14,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(fileUpload());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(join(__dirname, '../public')));
 
 // Merge PDFs
@@ -33,8 +35,10 @@ app.post('/merge', async (req, res) => {
     }
 
     const mergedBytes = await mergedPdf.save();
-    res.setHeader('Content-Disposition', 'attachment; filename=merged.pdf');
-    res.setHeader('Content-Type', 'application/pdf');
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="merged.pdf"',
+    });
     res.send(Buffer.from(mergedBytes));
   } catch (error) {
     res.status(500).send(`Error merging PDFs: ${error.message}`);
@@ -49,7 +53,7 @@ app.post('/split', async (req, res) => {
 
     const pdfDoc = await PDFDocument.load(file.data);
     const pageCount = pdfDoc.getPageCount();
-    
+
     let splitPdfs = [];
     for (let i = 0; i < pageCount; i++) {
       const newPdf = await PDFDocument.create();
@@ -77,14 +81,16 @@ app.post('/compress', async (req, res) => {
     const pdfDoc = await PDFDocument.load(file.data, { 
       updateMetadata: false 
     });
-    
+
     const compressedBytes = await pdfDoc.save({
       useObjectStreams: true,
       compress: true
     });
 
-    res.setHeader('Content-Disposition', 'attachment; filename=compressed.pdf');
-    res.setHeader('Content-Type', 'application/pdf');
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="compressed.pdf"',
+    });
     res.send(Buffer.from(compressedBytes));
   } catch (error) {
     res.status(500).send(`Error compressing PDF: ${error.message}`);
@@ -116,8 +122,10 @@ app.post('/watermark', async (req, res) => {
     });
 
     const watermarkedBytes = await pdfDoc.save();
-    res.setHeader('Content-Disposition', 'attachment; filename=watermarked.pdf');
-    res.setHeader('Content-Type', 'application/pdf');
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="watermarked.pdf"',
+    });
     res.send(Buffer.from(watermarkedBytes));
   } catch (error) {
     res.status(500).send(`Error adding watermark: ${error.message}`);
@@ -128,19 +136,21 @@ app.post('/watermark', async (req, res) => {
 app.post('/rotate', async (req, res) => {
   try {
     const file = req.files?.pdf;
-    const degrees = parseInt(req.body.degrees) || 90;
+    const degreesVal = parseInt(req.body.degrees) || 90;
     if (!file) return res.status(400).send('No file uploaded.');
 
     const pdfDoc = await PDFDocument.load(file.data);
     const pages = pdfDoc.getPages();
 
     pages.forEach(page => {
-      page.setRotation(degrees);
+      page.setRotation(pdfDegrees(degreesVal));
     });
 
     const rotatedBytes = await pdfDoc.save();
-    res.setHeader('Content-Disposition', 'attachment; filename=rotated.pdf');
-    res.setHeader('Content-Type', 'application/pdf');
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="rotated.pdf"',
+    });
     res.send(Buffer.from(rotatedBytes));
   } catch (error) {
     res.status(500).send(`Error rotating PDF: ${error.message}`);
