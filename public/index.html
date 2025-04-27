@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>PDF Tools</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -8,7 +9,7 @@
 <body>
   <div class="container">
     <h1>PDF Tools</h1>
-    
+
     <!-- Tool Selection -->
     <div class="tools-container">
       <button class="tool-btn active" data-tool="merge">
@@ -33,11 +34,11 @@
       <!-- Merge PDFs Form -->
       <form id="mergeForm" class="tool-form active">
         <h2>Merge Multiple PDFs</h2>
-        <div class="drop-zone">
-          <span class="drop-zone__prompt">Drop PDFs here or click to upload</span>
+        <label class="drop-zone">
+          <span class="drop-zone__prompt">Click to upload or drop PDFs here</span>
           <input type="file" name="pdfs" id="mergePdfs" multiple accept=".pdf" class="drop-zone__input" required />
-        </div>
-        <div id="mergeFileList" class="file-list"></div>
+        </label>
+        <div id="mergePdfsList" class="file-list"></div>
         <button type="submit" class="submit-btn">
           <i class="fas fa-object-group"></i> Merge PDFs
         </button>
@@ -46,11 +47,11 @@
       <!-- Split PDF Form -->
       <form id="splitForm" class="tool-form">
         <h2>Split PDF into Pages</h2>
-        <div class="drop-zone">
-          <span class="drop-zone__prompt">Drop a PDF here or click to upload</span>
+        <label class="drop-zone">
+          <span class="drop-zone__prompt">Click to upload or drop a PDF here</span>
           <input type="file" name="pdf" id="splitPdf" accept=".pdf" class="drop-zone__input" required />
-        </div>
-        <div id="splitFileList" class="file-list"></div>
+        </label>
+        <div id="splitPdfList" class="file-list"></div>
         <button type="submit" class="submit-btn">
           <i class="fas fa-cut"></i> Split PDF
         </button>
@@ -59,11 +60,11 @@
       <!-- Compress PDF Form -->
       <form id="compressForm" class="tool-form">
         <h2>Compress PDF</h2>
-        <div class="drop-zone">
-          <span class="drop-zone__prompt">Drop a PDF here or click to upload</span>
+        <label class="drop-zone">
+          <span class="drop-zone__prompt">Click to upload or drop a PDF here</span>
           <input type="file" name="pdf" id="compressPdf" accept=".pdf" class="drop-zone__input" required />
-        </div>
-        <div id="compressFileList" class="file-list"></div>
+        </label>
+        <div id="compressPdfList" class="file-list"></div>
         <button type="submit" class="submit-btn">
           <i class="fas fa-compress"></i> Compress PDF
         </button>
@@ -72,11 +73,11 @@
       <!-- Watermark PDF Form -->
       <form id="watermarkForm" class="tool-form">
         <h2>Add Watermark to PDF</h2>
-        <div class="drop-zone">
-          <span class="drop-zone__prompt">Drop a PDF here or click to upload</span>
+        <label class="drop-zone">
+          <span class="drop-zone__prompt">Click to upload or drop a PDF here</span>
           <input type="file" name="pdf" id="watermarkPdf" accept=".pdf" class="drop-zone__input" required />
-        </div>
-        <div id="watermarkFileList" class="file-list"></div>
+        </label>
+        <div id="watermarkPdfList" class="file-list"></div>
         <input type="text" name="watermarkText" placeholder="Enter watermark text" required />
         <button type="submit" class="submit-btn">
           <i class="fas fa-stamp"></i> Add Watermark
@@ -86,11 +87,11 @@
       <!-- Rotate PDF Form -->
       <form id="rotateForm" class="tool-form">
         <h2>Rotate PDF Pages</h2>
-        <div class="drop-zone">
-          <span class="drop-zone__prompt">Drop a PDF here or click to upload</span>
+        <label class="drop-zone">
+          <span class="drop-zone__prompt">Click to upload or drop a PDF here</span>
           <input type="file" name="pdf" id="rotatePdf" accept=".pdf" class="drop-zone__input" required />
-        </div>
-        <div id="rotateFileList" class="file-list"></div>
+        </label>
+        <div id="rotatePdfList" class="file-list"></div>
         <select name="degrees" required>
           <option value="90">Rotate 90° Clockwise</option>
           <option value="180">Rotate 180°</option>
@@ -110,54 +111,51 @@
   </div>
 
   <script>
-    // Tool switching functionality
+    // Switch between tools
     document.querySelectorAll('.tool-btn').forEach(button => {
       button.addEventListener('click', () => {
-        // Update active button
         document.querySelector('.tool-btn.active').classList.remove('active');
         button.classList.add('active');
-        
-        // Show corresponding form
+
         document.querySelector('.tool-form.active').classList.remove('active');
         document.getElementById(`${button.dataset.tool}Form`).classList.add('active');
       });
     });
 
-    // Drag and drop functionality
-    document.querySelectorAll('.drop-zone').forEach(dropZone => {
-      dropZone.addEventListener('dragover', e => {
+    // Handle drag and drop + file browse
+    function setupDropZone(dropZoneElement) {
+      const inputElement = dropZoneElement.querySelector('input');
+
+      dropZoneElement.addEventListener('click', () => inputElement.click());
+
+      inputElement.addEventListener('change', () => updateFileList(inputElement));
+
+      dropZoneElement.addEventListener('dragover', (e) => {
         e.preventDefault();
-        dropZone.classList.add('drop-zone--over');
+        dropZoneElement.classList.add('drop-zone--over');
       });
 
-      ['dragleave', 'dragend'].forEach(type => {
-        dropZone.addEventListener(type, () => {
-          dropZone.classList.remove('drop-zone--over');
+      ['dragleave', 'dragend', 'drop'].forEach(eventType => {
+        dropZoneElement.addEventListener(eventType, () => {
+          dropZoneElement.classList.remove('drop-zone--over');
         });
       });
 
-      dropZone.addEventListener('drop', e => {
+      dropZoneElement.addEventListener('drop', (e) => {
         e.preventDefault();
-        dropZone.classList.remove('drop-zone--over');
-        
-        const input = dropZone.querySelector('input');
-        const files = e.dataTransfer.files;
-        
-        if (input.multiple) {
-          input.files = files;
-        } else {
-          input.files = files.length ? [files[0]] : null;
-        }
-        
-        updateFileList(input);
+        inputElement.files = e.dataTransfer.files;
+        updateFileList(inputElement);
       });
-    });
+    }
 
-    // File list update
+    document.querySelectorAll('.drop-zone').forEach(setupDropZone);
+
+    // Show selected files
     function updateFileList(input) {
-      const fileList = document.getElementById(`${input.id}List`);
+      const fileListId = input.id + 'List';
+      const fileList = document.getElementById(fileListId);
       fileList.innerHTML = '';
-      
+
       Array.from(input.files).forEach(file => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -170,8 +168,8 @@
       });
     }
 
-    // Form submission handlers
-    const forms = {
+    // Submit forms
+    const formEndpoints = {
       mergeForm: '/merge',
       splitForm: '/split',
       compressForm: '/compress',
@@ -179,40 +177,35 @@
       rotateForm: '/rotate'
     };
 
-    Object.entries(forms).forEach(([formId, endpoint]) => {
+    Object.entries(formEndpoints).forEach(([formId, endpoint]) => {
       const form = document.getElementById(formId);
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = new FormData(form);
         const spinner = document.getElementById('loadingSpinner');
-        
+        spinner.classList.remove('hidden');
+
         try {
-          spinner.classList.remove('hidden');
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            body: formData
-          });
-          
-          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-          
-          const blob = await res.blob();
-          const url = window.URL.createObjectURL(blob);
+          const formData = new FormData(form);
+          const response = await fetch(endpoint, { method: 'POST', body: formData });
+
+          if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+
           const a = document.createElement('a');
           a.href = url;
-          a.download = `processed.pdf`;
+          a.download = 'processed.pdf';
+          document.body.appendChild(a);
           a.click();
-          window.URL.revokeObjectURL(url);
+          URL.revokeObjectURL(url);
+          a.remove();
         } catch (error) {
-          alert(`Error processing PDF: ${error.message}`);
+          alert(`Error: ${error.message}`);
         } finally {
           spinner.classList.add('hidden');
         }
       });
-    });
-
-    // File input change handlers
-    document.querySelectorAll('input[type="file"]').forEach(input => {
-      input.addEventListener('change', () => updateFileList(input));
     });
   </script>
 </body>
